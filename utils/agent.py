@@ -1,11 +1,19 @@
 import os
 import re
+import streamlit as st
 from openai import OpenAI
 from dotenv import load_dotenv
 from utils.db import get_schema
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def get_api_key():
+    try:
+        return st.secrets["OPENAI_API_KEY"]
+    except:
+        return os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=get_api_key())
 
 SYSTEM_PROMPT = """You are an expert SQL assistant. You help users query a SQLite company database.
 
@@ -16,9 +24,8 @@ Rules:
 - No markdown, no code blocks, no backticks, no explanation
 - Only use SELECT statements
 - Use proper SQLite syntax
-- Use table aliases for readability
 - Always use LIMIT 100 unless the user asks for all records
-- For salary/amount columns, round to 2 decimal places
+- Round salary/amount columns to 2 decimal places
 - Use strftime for date operations in SQLite
 
 Schema:
@@ -26,7 +33,6 @@ Schema:
 """
 
 def generate_sql(question: str, schema: str) -> str:
-    """Converts a natural language question to a SQL query."""
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -42,7 +48,6 @@ def generate_sql(question: str, schema: str) -> str:
 
 
 def generate_summary(question: str, sql: str, result_preview: str) -> str:
-    """Generates a plain English summary of the query results."""
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
