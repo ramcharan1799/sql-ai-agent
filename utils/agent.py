@@ -1,19 +1,21 @@
 import os
 import re
-import streamlit as st
 from openai import OpenAI
 from dotenv import load_dotenv
 from utils.db import get_schema
 
 load_dotenv()
 
-def get_api_key():
+def get_client():
+    key = None
     try:
-        return st.secrets["OPENAI_API_KEY"]
-    except:
-        return os.getenv("OPENAI_API_KEY")
-
-client = OpenAI(api_key=get_api_key())
+        import streamlit as st
+        key = st.secrets.get("OPENAI_API_KEY") or st.secrets.get("openai_api_key")
+    except Exception:
+        pass
+    if not key:
+        key = os.environ.get("OPENAI_API_KEY")
+    return OpenAI(api_key=key)
 
 SYSTEM_PROMPT = """You are an expert SQL assistant. You help users query a SQLite company database.
 
@@ -33,6 +35,7 @@ Schema:
 """
 
 def generate_sql(question: str, schema: str) -> str:
+    client = get_client()
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -46,8 +49,8 @@ def generate_sql(question: str, schema: str) -> str:
     sql = re.sub(r"```(?:sql)?", "", sql).replace("```", "").strip()
     return sql
 
-
 def generate_summary(question: str, sql: str, result_preview: str) -> str:
+    client = get_client()
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
